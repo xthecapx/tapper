@@ -2,10 +2,17 @@ import Head from 'next/head'
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react'
 import { Auth, ThemeSupa } from '@supabase/auth-ui-react'
 import TapperTracker from '@/components/TapperTracker'
+import { useEffect, useState } from 'react'
 
 export default function Home() {
   const session = useSession()
   const supabase = useSupabaseClient()
+  const [redirectTo, setRedirectTo] = useState<string>('')
+
+  useEffect(() => {
+    // Set redirect URL on client side to avoid SSR issues
+    setRedirectTo(`${window.location.origin}/api/auth/callback`)
+  }, [])
 
   return (
     <>
@@ -23,7 +30,15 @@ export default function Home() {
                 <span className="font-sans text-3xl text-center pb-2 mb-1 border-b mx-4 align-center">
                   Salón de la Vergüenza 😈
                 </span>
-                <Auth supabaseClient={supabase} appearance={{ theme: ThemeSupa }} theme="dark" />
+                <Auth 
+                  supabaseClient={supabase} 
+                  appearance={{ theme: ThemeSupa }} 
+                  theme="dark"
+                  redirectTo={redirectTo}
+                  providers={[]}
+                  onlyThirdPartyProviders={false}
+                  magicLink={true}
+                />
               </div>
             </div>
           </div>
