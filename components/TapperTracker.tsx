@@ -1,20 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useSupabaseClient, Session } from '@supabase/auth-helpers-react'
-
-interface User {
-  id: string
-  name: string
-  email: string
-}
-
-interface TapperLog {
-  id: number
-  user_id: string
-  log_date: string
-  is_tapper: boolean
-  logged_by: string
-  users: User
-}
+import { User, TapperLog, TabType } from './types'
+import TrackingTab from './TrackingTab'
+import KingsTab from './KingsTab'
+import TableTab from './TableTab'
+import InfoTab from './InfoTab'
 
 interface TapperTrackerProps {
   session: Session
@@ -26,19 +16,7 @@ export default function TapperTracker({ session }: TapperTrackerProps) {
   const [tapperLogs, setTapperLogs] = useState<TapperLog[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
-
-  // Get last 7 days for the table
-  const getLast7Days = () => {
-    const days = []
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      days.push(date.toISOString().split('T')[0])
-    }
-    return days
-  }
-
-  const days = getLast7Days()
+  const [activeTab, setActiveTab] = useState<TabType>('tracking')
 
   useEffect(() => {
     fetchUsers()
@@ -67,7 +45,6 @@ export default function TapperTracker({ session }: TapperTrackerProps) {
           *,
           users!tapper_logs_user_id_fkey(name, email)
         `)
-        .gte('log_date', days[0])
         .order('log_date', { ascending: false })
       
       if (error) throw error
@@ -79,124 +56,106 @@ export default function TapperTracker({ session }: TapperTrackerProps) {
     }
   }
 
-  const toggleTapper = async (userId: string, date: string) => {
-    try {
-      // Check if log exists for this user and date
-      const existingLog = tapperLogs.find(
-        log => log.user_id === userId && log.log_date === date
-      )
 
-      if (existingLog) {
-        // Update existing log
-        const { error } = await supabase
-          .from('tapper_logs')
-          .update({ 
-            is_tapper: !existingLog.is_tapper,
-            logged_by: session.user.id
-          })
-          .eq('id', existingLog.id)
-        
-        if (error) throw error
-      } else {
-        // Create new log
-        const { error } = await supabase
-          .from('tapper_logs')
-          .insert({
-            user_id: userId,
-            log_date: date,
-            is_tapper: true,
-            logged_by: session.user.id
-          })
-        
-        if (error) throw error
-      }
-
-      // Refresh the data
-      fetchTapperLogs()
-    } catch (error) {
-      console.error('Error toggling tapper:', error)
-    }
-  }
-
-  const getTapperStatus = (userId: string, date: string): boolean => {
-    const log = tapperLogs.find(
-      log => log.user_id === userId && log.log_date === date
-    )
-    return log?.is_tapper || false
-  }
 
   if (loading) {
-    return <div className="text-center p-4">Loading...</div>
+    return <div className="text-center p-4">Cargando el salón de la vergüenza... 😈</div>
   }
 
+  const TabButton = ({ id, label, icon, isActive, onClick }: {
+    id: string
+    label: string
+    icon: string
+    isActive: boolean
+    onClick: () => void
+  }) => (
+    <button
+      onClick={onClick}
+      className={`flex-1 py-3 px-2 text-xs sm:text-sm font-medium text-center border-b-2 transition-all duration-200 ${
+        isActive
+          ? 'border-red-500 text-red-600 bg-red-50'
+          : 'border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300'
+      }`}
+    >
+      <div className="flex flex-col items-center">
+        <span className="text-lg sm:text-xl mb-1">{icon}</span>
+        <span>{label}</span>
+      </div>
+    </button>
+  )
+
+
+
   return (
-    <div className="w-full max-w-6xl mx-auto p-4">
-      <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
-        Tapper Tracker 🍔
+    <div className="w-full max-w-6xl mx-auto p-2 sm:p-4">
+      <h1 className="text-2xl sm:text-3xl font-bold text-center mb-4 text-gray-800">
+        Rastreador de Tappers 🍔
       </h1>
-      
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                {days.map(date => (
-                  <th key={date} className="px-4 py-3 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">
-                    {new Date(date).toLocaleDateString('en-US', { 
-                      weekday: 'short',
-                      month: 'numeric',
-                      day: 'numeric'
-                    })}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map(user => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                  </td>
-                  {days.map(date => {
-                    const isTapper = getTapperStatus(user.id, date)
-                    return (
-                      <td key={`${user.id}-${date}`} className="px-4 py-4 text-center">
-                        <button
-                          onClick={() => toggleTapper(user.id, date)}
-                          className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
-                            isTapper
-                              ? 'bg-red-500 border-red-500 text-white'
-                              : 'bg-white border-gray-300 hover:border-gray-400'
-                          }`}
-                          title={isTapper ? 'Tapper day!' : 'Clean day'}
-                        >
-                          {isTapper ? '🍔' : '✅'}
-                        </button>
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="text-center mb-4 p-2 sm:p-3 bg-red-100 rounded-lg border-2 border-red-300">
+        <p className="text-sm sm:text-lg font-bold text-red-800">
+          ¡SALÓN DE LA VERGÜENZA! 😈
+        </p>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-t-lg shadow-lg border-b">
+        <div className="flex">
+          <TabButton
+            id="tracking"
+            label="Seguimiento"
+            icon="📅"
+            isActive={activeTab === 'tracking'}
+            onClick={() => setActiveTab('tracking')}
+          />
+          <TabButton
+            id="cards"
+            label="Reyes"
+            icon="👑"
+            isActive={activeTab === 'cards'}
+            onClick={() => setActiveTab('cards')}
+          />
+          <TabButton
+            id="table"
+            label="Tabla"
+            icon="📊"
+            isActive={activeTab === 'table'}
+            onClick={() => setActiveTab('table')}
+          />
+          <TabButton
+            id="info"
+            label="Info"
+            icon="ℹ️"
+            isActive={activeTab === 'info'}
+            onClick={() => setActiveTab('info')}
+          />
         </div>
       </div>
 
-      {users.length === 0 && (
-        <div className="text-center mt-8 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-          <p className="text-yellow-800">
-            No users found. Sign up more users to start tracking! 
-          </p>
-        </div>
-      )}
+      {/* Tab Content */}
+      <div className="bg-white rounded-b-lg shadow-lg min-h-96 p-4">
+        
+        {/* Tracking Tab */}
+        {activeTab === 'tracking' && (
+          <TrackingTab 
+            users={users} 
+            tapperLogs={tapperLogs} 
+            session={session} 
+            onRefresh={fetchTapperLogs} 
+          />
+        )}
 
-      <div className="mt-8 text-center text-sm text-gray-500">
-        <p>Click the circles to mark tapper days (bad eating) for each user.</p>
-        <p>🍔 = Tapper day, ✅ = Clean day</p>
+        {/* Cards Tab - Kings of Shame */}
+        {activeTab === 'cards' && (
+          <KingsTab users={users} tapperLogs={tapperLogs} />
+        )}
+
+        {/* Table Tab - Detailed Rankings */}
+        {activeTab === 'table' && (
+          <TableTab users={users} tapperLogs={tapperLogs} />
+        )}
+
+        {/* Info Tab */}
+        {activeTab === 'info' && <InfoTab />}
       </div>
     </div>
   )
