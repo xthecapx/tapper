@@ -23,6 +23,7 @@ export default function InfoTab() {
             <li>• <span className="text-purple-600 font-bold">Mes:</span> Desde el día 1 del mes actual</li>
             <li>• <span className="text-blue-600 font-bold">Año:</span> Desde el 1 de enero</li>
             <li>• <span className="text-red-600 font-bold">Total:</span> Desde que te registraste</li>
+            <li>• <span className="text-green-600 font-bold">🎉 Domingo:</span> ¡DÍA LIBRE! Los tappers no cuentan como penalización</li>
           </ul>
         </div>
 
@@ -30,9 +31,9 @@ export default function InfoTab() {
           <h3 className="font-bold text-red-800 text-sm sm:text-base mb-2">👑 Sistema de Reyes:</h3>
           <ul className="text-xs sm:text-sm text-red-700 space-y-1">
             <li>• Los <strong>REYES</strong> son los que <strong>MÁS</strong> tappers tienen</li>
-            <li>• 🗑️ Rey de la Semana = Peor de lunes a domingo</li>
-            <li>• 👑🐷 Rey del Mes = Peor del mes actual</li>
-            <li>• 🏆💩 Rey del Año = Peor del año</li>
+            <li>• 🗑️ Rey de la Semana = Peor de lunes a sábado (domingo NO cuenta)</li>
+            <li>• 👑🐷 Rey del Mes = Peor del mes actual (domingos NO cuentan)</li>
+            <li>• 🏆💩 Rey del Año = Peor del año (domingos NO cuentan)</li>
             <li>• ¡Ser rey es ser una VERGÜENZA! 😈</li>
           </ul>
         </div>
@@ -64,6 +65,10 @@ export default function InfoTab() {
             <div>
               <p className="font-semibold">¿Qué es un "tapper"?</p>
               <p>Un día donde comiste muy mal (comida chatarra, excesos, etc.)</p>
+            </div>
+            <div>
+              <p className="font-semibold">¿Los domingos cuentan como penalización?</p>
+              <p>¡NO! Los domingos son días libres. Puedes marcarlos pero no afectan tu ranking 🎉</p>
             </div>
             <div>
               <p className="font-semibold">¿Puedo cambiar los días ya marcados?</p>

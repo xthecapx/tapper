@@ -28,11 +28,18 @@ export default function KingsTab({ users, tapperLogs }: KingsTabProps) {
         break
     }
 
-    return tapperLogs.filter(log => 
-      log.user_id === userId && 
-      log.is_tapper && 
-      new Date(log.log_date) >= startDate
-    ).length
+    return tapperLogs.filter(log => {
+      // Basic filters: user, is_tapper, and date range
+      const matchesUser = log.user_id === userId
+      const isTapper = log.is_tapper
+      const inDateRange = new Date(log.log_date) >= startDate
+      
+      // Exclude Sundays from penalty calculations (Sunday is a free day)
+      const logDate = new Date(log.log_date)
+      const isSunday = logDate.getDay() === 0
+      
+      return matchesUser && isTapper && inDateRange && !isSunday
+    }).length
   }
 
   const getKingOfPeriod = (period: 'week' | 'month' | 'year'): { user: User | null; count: number; hasTie: boolean } => {

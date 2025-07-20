@@ -117,6 +117,11 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
                         month: 'numeric',
                         day: 'numeric'
                       })}
+                      {new Date(date).getDay() === 0 && (
+                        <div className="text-xs normal-case text-green-600 font-bold">
+                          🎉 Libre
+                        </div>
+                      )}
                     </div>
                     <div className="sm:hidden">
                       {new Date(date).toLocaleDateString('es-ES', { 
@@ -126,6 +131,11 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
                       <span className="text-xs">
                         {new Date(date).getDate()}
                       </span>
+                      {new Date(date).getDay() === 0 && (
+                        <div className="text-xs text-green-600">
+                          🎉
+                        </div>
+                      )}
                     </div>
                   </th>
                 ))}
@@ -140,18 +150,31 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
                   </td>
                   {days.map(date => {
                     const isTapper = getTapperStatus(user.id, date)
+                    const dateObj = new Date(date)
+                    const isSunday = dateObj.getDay() === 0
+                    
                     return (
                       <td key={`${user.id}-${date}`} className="px-1 sm:px-4 py-2 sm:py-4 text-center">
                         <button
                           onClick={() => toggleTapper(user.id, date)}
                           className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 transition-all duration-200 text-xs sm:text-base ${
                             isTapper
-                              ? 'bg-red-500 border-red-500 text-white'
+                              ? isSunday 
+                                ? 'bg-orange-400 border-orange-400 text-white' // Sunday tapper (free day)
+                                : 'bg-red-500 border-red-500 text-white' // Regular tapper
                               : 'bg-white border-gray-300 hover:border-gray-400'
-                          }`}
-                          title={isTapper ? '¡Día de tapper! ¡Qué vergüenza!' : 'Día limpio'}
+                          } ${isSunday ? 'ring-2 ring-green-300' : ''}`}
+                          title={
+                            isSunday 
+                              ? isTapper 
+                                ? '🎉 Domingo libre - ¡No cuenta como penalización!' 
+                                : '🎉 Domingo libre - Día sin penalización'
+                              : isTapper 
+                                ? '¡Día de tapper! ¡Qué vergüenza!' 
+                                : 'Día limpio'
+                          }
                         >
-                          {isTapper ? '🍔' : '✅'}
+                          {isTapper ? (isSunday ? '🎉' : '🍔') : '✅'}
                         </button>
                       </td>
                     )

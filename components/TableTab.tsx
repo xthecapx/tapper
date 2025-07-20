@@ -7,11 +7,28 @@ interface TableTabProps {
 
 export default function TableTab({ users, tapperLogs }: TableTabProps) {
   const getTapperCountForUser = (userId: string): number => {
-    return tapperLogs.filter(log => log.user_id === userId && log.is_tapper).length
+    return tapperLogs.filter(log => {
+      const matchesUser = log.user_id === userId
+      const isTapper = log.is_tapper
+      
+      // Exclude Sundays from penalty calculations (Sunday is a free day)
+      const logDate = new Date(log.log_date)
+      const isSunday = logDate.getDay() === 0
+      
+      return matchesUser && isTapper && !isSunday
+    }).length
   }
 
   const getTotalTapperDays = (): number => {
-    return tapperLogs.filter(log => log.is_tapper).length
+    return tapperLogs.filter(log => {
+      const isTapper = log.is_tapper
+      
+      // Exclude Sundays from penalty calculations (Sunday is a free day)
+      const logDate = new Date(log.log_date)
+      const isSunday = logDate.getDay() === 0
+      
+      return isTapper && !isSunday
+    }).length
   }
 
   const getTapperCountForPeriod = (userId: string, period: 'week' | 'month' | 'year'): number => {
@@ -35,11 +52,18 @@ export default function TableTab({ users, tapperLogs }: TableTabProps) {
         break
     }
 
-    return tapperLogs.filter(log => 
-      log.user_id === userId && 
-      log.is_tapper && 
-      new Date(log.log_date) >= startDate
-    ).length
+    return tapperLogs.filter(log => {
+      // Basic filters: user, is_tapper, and date range
+      const matchesUser = log.user_id === userId
+      const isTapper = log.is_tapper
+      const inDateRange = new Date(log.log_date) >= startDate
+      
+      // Exclude Sundays from penalty calculations (Sunday is a free day)
+      const logDate = new Date(log.log_date)
+      const isSunday = logDate.getDay() === 0
+      
+      return matchesUser && isTapper && inDateRange && !isSunday
+    }).length
   }
 
   const getStatusEmoji = (tapperCount: number) => {
