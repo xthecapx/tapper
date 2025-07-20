@@ -1,17 +1,4 @@
-interface User {
-  id: string
-  name: string
-  email: string
-}
-
-interface TapperLog {
-  id: number
-  user_id: string
-  log_date: string
-  is_tapper: boolean
-  logged_by: string
-  users: User
-}
+import { User, TapperLog } from './types'
 
 interface TableTabProps {
   users: User[]
@@ -33,7 +20,12 @@ export default function TableTab({ users, tapperLogs }: TableTabProps) {
 
     switch (period) {
       case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        // Find the start of the current week (Monday)
+        const dayOfWeek = now.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Convert to Monday-based week
+        startDate = new Date(now)
+        startDate.setDate(now.getDate() - daysFromMonday)
+        startDate.setHours(0, 0, 0, 0) // Set to start of day
         break
       case 'month':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -96,6 +88,9 @@ export default function TableTab({ users, tapperLogs }: TableTabProps) {
               <th className="px-1 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-red-800 uppercase tracking-wider">
                 <span className="hidden sm:inline">Semana</span>
                 <span className="sm:hidden">7d</span>
+                <div className="text-xs normal-case hidden sm:block text-red-600">
+                  (Lun-Dom)
+                </div>
               </th>
               <th className="px-1 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-red-800 uppercase tracking-wider">
                 <span className="hidden sm:inline">Mes</span>
@@ -175,20 +170,8 @@ export default function TableTab({ users, tapperLogs }: TableTabProps) {
                     
                     {/* Status */}
                     <td className="px-2 sm:px-6 py-3 sm:py-4 text-center">
-                      <div className="flex items-center justify-center">
-                        <span className="text-lg sm:text-2xl mr-1 sm:mr-2">{getStatusEmoji(tapperCount)}</span>
-                        <span className={`text-xs sm:text-sm font-medium ${
-                          tapperCount === 0 ? 'text-green-600' :
-                          tapperCount <= 2 ? 'text-blue-600' :
-                          tapperCount <= 5 ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`}>
-                          <span className="hidden sm:inline">{getStatusText(tapperCount)}</span>
-                          <span className="sm:hidden">
-                            {tapperCount === 0 ? 'Santo' : tapperCount <= 2 ? 'OK' : tapperCount <= 5 ? 'Mal' : 'Muy mal'}
-                          </span>
-                        </span>
-                      </div>
+                      <div className="text-xl sm:text-2xl">{getStatusEmoji(tapperCount)}</div>
+                      <div className="text-xs sm:text-sm font-bold text-gray-800">{getStatusText(tapperCount)}</div>
                     </td>
                   </tr>
                 )
@@ -196,7 +179,7 @@ export default function TableTab({ users, tapperLogs }: TableTabProps) {
           </tbody>
         </table>
         
-        {/* Overall Stats */}
+        {/* Footer */}
         <div className="bg-gray-50 px-3 sm:px-6 py-3 sm:py-4 border-t">
           <div className="flex justify-between items-center text-xs sm:text-sm text-gray-600">
             <span className="hidden sm:inline">Total de pecados culinarios del grupo:</span>

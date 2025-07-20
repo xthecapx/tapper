@@ -25,14 +25,26 @@ interface TrackingTabProps {
 export default function TrackingTab({ users, tapperLogs, session, onRefresh }: TrackingTabProps) {
   const supabase = useSupabaseClient()
 
-  // Get last 7 days for the table
+  // Get last 7 days for the table (Monday to Sunday)
   const getLast7Days = () => {
     const days = []
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
+    const today = new Date()
+    
+    // Find the most recent Monday
+    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Convert to Monday-based week
+    
+    // Start from the most recent Monday
+    const startDate = new Date(today)
+    startDate.setDate(today.getDate() - daysFromMonday)
+    
+    // Generate 7 days starting from that Monday
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate)
+      date.setDate(startDate.getDate() + i)
       days.push(date.toISOString().split('T')[0])
     }
+    
     return days
   }
 
@@ -87,7 +99,7 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
   return (
     <div>
       <h2 className="text-lg sm:text-xl font-bold text-center mb-4 text-gray-800">
-        Seguimiento Diario (Últimos 7 días)
+        Seguimiento Diario (Semana actual: Lunes a Domingo)
       </h2>
       <div className="bg-gray-50 rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">

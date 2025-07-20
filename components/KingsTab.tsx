@@ -1,17 +1,4 @@
-interface User {
-  id: string
-  name: string
-  email: string
-}
-
-interface TapperLog {
-  id: number
-  user_id: string
-  log_date: string
-  is_tapper: boolean
-  logged_by: string
-  users: User
-}
+import { User, TapperLog } from './types'
 
 interface KingsTabProps {
   users: User[]
@@ -26,7 +13,12 @@ export default function KingsTab({ users, tapperLogs }: KingsTabProps) {
 
     switch (period) {
       case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        // Find the start of the current week (Monday)
+        const dayOfWeek = now.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Convert to Monday-based week
+        startDate = new Date(now)
+        startDate.setDate(now.getDate() - daysFromMonday)
+        startDate.setHours(0, 0, 0, 0) // Set to start of day
         break
       case 'month':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -94,6 +86,11 @@ export default function KingsTab({ users, tapperLogs }: KingsTabProps) {
             <div key={period} className="bg-gradient-to-br from-red-100 to-red-200 border-2 border-red-300 rounded-lg p-3 sm:p-4 text-center">
               <div className="text-lg sm:text-xl font-bold text-red-800 mb-2">
                 {periodEmoji} Rey {periodTitle}
+                {period === 'week' && (
+                  <div className="text-xs normal-case text-red-600">
+                    (Lun-Dom)
+                  </div>
+                )}
               </div>
               
               {king.user ? (
