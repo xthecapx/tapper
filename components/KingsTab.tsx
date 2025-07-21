@@ -80,7 +80,7 @@ export default function KingsTab({ users, tapperLogs }: KingsTabProps) {
   return (
     <div>
       <h2 className="text-lg sm:text-xl font-bold text-center mb-4 text-gray-800">
-        Reyes de la Vergüenza 👑💩
+        Reyes de la Vergüenza - Competencia Semanal 👑💩
       </h2>
       
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">

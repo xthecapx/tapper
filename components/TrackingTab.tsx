@@ -1,19 +1,14 @@
+import { useState } from 'react'
 import { useSupabaseClient, Session } from '@supabase/auth-helpers-react'
-
-interface User {
-  id: string
-  name: string
-  email: string
-}
-
-interface TapperLog {
-  id: number
-  user_id: string
-  log_date: string
-  is_tapper: boolean
-  logged_by: string
-  users: User
-}
+import { User, TapperLog } from './types'
+import { 
+  startOfWeek, 
+  addDays, 
+  format, 
+  isToday as isTodayFns,
+  isSunday 
+} from 'date-fns'
+import { es } from 'date-fns/locale'
 
 interface TrackingTabProps {
   users: User[]
@@ -25,31 +20,39 @@ interface TrackingTabProps {
 export default function TrackingTab({ users, tapperLogs, session, onRefresh }: TrackingTabProps) {
   const supabase = useSupabaseClient()
 
-  // Get last 7 days for the table (Monday to Sunday)
-  const getLast7Days = () => {
-    const days = []
+  // Get current week (Monday to Sunday) for the table using date-fns
+  const getCurrentWeek = () => {
     const today = new Date()
     
-    // Find the most recent Monday
-    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Convert to Monday-based week
+    // Get the start of the current week (Monday)
+    // Note: date-fns startOfWeek with weekStartsOn: 1 means Monday = start
+    const mondayOfWeek = startOfWeek(today, { weekStartsOn: 1 })
     
-    // Start from the most recent Monday
-    const startDate = new Date(today)
-    startDate.setDate(today.getDate() - daysFromMonday)
-    
-    // Generate 7 days starting from that Monday
+    // Generate 7 days starting from Monday
+    const days = []
     for (let i = 0; i < 7; i++) {
-      const date = new Date(startDate)
-      date.setDate(startDate.getDate() + i)
-      days.push(date.toISOString().split('T')[0])
+      const date = addDays(mondayOfWeek, i)
+      days.push(format(date, 'yyyy-MM-dd'))
     }
     
-    return days
+    // Get today as string for comparison
+    const todayString = format(today, 'yyyy-MM-dd')
+    
+    // Debug output
+    console.log('getCurrentWeek debug (date-fns):', {
+      today: format(today, 'EEEE, d MMMM yyyy', { locale: es }),
+      todayString: todayString,
+      mondayOfWeek: format(mondayOfWeek, 'EEEE, d MMMM yyyy', { locale: es }),
+      weekDates: days,
+      todayInWeek: days.includes(todayString),
+      weekRange: `${format(mondayOfWeek, 'EEE d', { locale: es })} - ${format(addDays(mondayOfWeek, 6), 'EEE d', { locale: es })}`
+    })
+    
+    return { days, todayString }
   }
 
-  const days = getLast7Days()
-
+  const { days, todayString } = getCurrentWeek()
+  
   const toggleTapper = async (userId: string, date: string) => {
     try {
       // Check if log exists for this user and date
@@ -99,7 +102,7 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
   return (
     <div>
       <h2 className="text-lg sm:text-xl font-bold text-center mb-4 text-gray-800">
-        Seguimiento Diario (Semana actual: Lunes a Domingo)
+        Seguimiento Semanal - Competencia Actual (Lunes a Domingo) v3.0 🗓️
       </h2>
       <div className="bg-gray-50 rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
@@ -109,36 +112,54 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
                 <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
                   Usuario
                 </th>
-                {days.map(date => (
-                  <th key={date} className="px-1 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider">
-                    <div className="hidden sm:block">
-                      {new Date(date).toLocaleDateString('es-ES', { 
-                        weekday: 'short',
-                        month: 'numeric',
-                        day: 'numeric'
-                      })}
-                      {new Date(date).getDay() === 0 && (
-                        <div className="text-xs normal-case text-green-600 font-bold">
-                          🎉 Libre
-                        </div>
-                      )}
-                    </div>
-                    <div className="sm:hidden">
-                      {new Date(date).toLocaleDateString('es-ES', { 
-                        weekday: 'narrow'
-                      })}
-                      <br />
-                      <span className="text-xs">
-                        {new Date(date).getDate()}
-                      </span>
-                      {new Date(date).getDay() === 0 && (
-                        <div className="text-xs text-green-600">
-                          🎉
-                        </div>
-                      )}
-                    </div>
-                  </th>
-                ))}
+                {days.map(date => {
+                  const dateObj = new Date(date + 'T00:00:00') // Ensure local timezone
+                  const isToday = isTodayFns(dateObj)
+                  const isSundayDay = isSunday(dateObj)
+                  
+                  return (
+                    <th key={date} className={`px-1 sm:px-4 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium uppercase tracking-wider ${
+                      isToday ? 'bg-blue-100 text-blue-800' : 'text-gray-500'
+                    }`}>
+                      <div className="hidden sm:block">
+                        {format(dateObj, 'EEE, d/M', { locale: es })}
+                        {isSundayDay && isToday ? (
+                          <div className="text-xs normal-case text-green-600 font-bold">
+                            🎉 HOY LIBRE
+                          </div>
+                        ) : isSundayDay ? (
+                          <div className="text-xs normal-case text-green-600 font-bold">
+                            🎉 Libre
+                          </div>
+                        ) : isToday ? (
+                          <div className="text-xs normal-case text-blue-600 font-bold">
+                            HOY
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="sm:hidden">
+                        {format(dateObj, 'EEEEE', { locale: es })}
+                        <br />
+                        <span className="text-xs">
+                          {format(dateObj, 'd')}
+                        </span>
+                        {isSundayDay && isToday ? (
+                          <div className="text-xs text-green-600 font-bold">
+                            🎉HOY
+                          </div>
+                        ) : isSundayDay ? (
+                          <div className="text-xs text-green-600">
+                            🎉
+                          </div>
+                        ) : isToday ? (
+                          <div className="text-xs text-blue-600 font-bold">
+                            HOY
+                          </div>
+                        ) : null}
+                      </div>
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -150,31 +171,40 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
                   </td>
                   {days.map(date => {
                     const isTapper = getTapperStatus(user.id, date)
-                    const dateObj = new Date(date)
-                    const isSunday = dateObj.getDay() === 0
+                    const dateObj = new Date(date + 'T00:00:00') // Ensure local timezone
+                    const isSundayDay = isSunday(dateObj)
+                    const isToday = isTodayFns(dateObj)
                     
                     return (
-                      <td key={`${user.id}-${date}`} className="px-1 sm:px-4 py-2 sm:py-4 text-center">
+                      <td key={`${user.id}-${date}`} className={`px-1 sm:px-4 py-2 sm:py-4 text-center ${
+                        isToday ? 'bg-blue-50' : ''
+                      }`}>
                         <button
                           onClick={() => toggleTapper(user.id, date)}
                           className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 transition-all duration-200 text-xs sm:text-base ${
                             isTapper
-                              ? isSunday 
+                              ? isSundayDay 
                                 ? 'bg-orange-400 border-orange-400 text-white' // Sunday tapper (free day)
                                 : 'bg-red-500 border-red-500 text-white' // Regular tapper
                               : 'bg-white border-gray-300 hover:border-gray-400'
-                          } ${isSunday ? 'ring-2 ring-green-300' : ''}`}
+                          } ${isSundayDay ? 'ring-2 ring-green-300' : ''} ${
+                            isToday ? 'ring-2 ring-blue-400 shadow-lg' : ''
+                          }`}
                           title={
-                            isSunday 
+                            isSundayDay 
                               ? isTapper 
                                 ? '🎉 Domingo libre - ¡No cuenta como penalización!' 
                                 : '🎉 Domingo libre - Día sin penalización'
-                              : isTapper 
-                                ? '¡Día de tapper! ¡Qué vergüenza!' 
-                                : 'Día limpio'
+                              : isToday
+                                ? isTapper
+                                  ? '¡HOY - Día de tapper! ¡Qué vergüenza!'
+                                  : 'HOY - Día limpio'
+                                : isTapper 
+                                  ? '¡Día de tapper! ¡Qué vergüenza!' 
+                                  : 'Día limpio'
                           }
                         >
-                          {isTapper ? (isSunday ? '🎉' : '🍔') : '✅'}
+                          {isTapper ? (isSundayDay ? '🎉' : '🍔') : '✅'}
                         </button>
                       </td>
                     )

@@ -19,7 +19,7 @@ export default function InfoTab() {
         <div className="bg-yellow-50 p-3 sm:p-4 rounded-lg border border-yellow-200">
           <h3 className="font-bold text-yellow-800 text-sm sm:text-base mb-2">⏰ Sistema de Tiempo:</h3>
           <ul className="text-xs sm:text-sm text-yellow-700 space-y-1">
-            <li>• <span className="text-orange-600 font-bold">Semana:</span> Desde el lunes hasta el domingo</li>
+            <li>• <span className="text-orange-600 font-bold">Competencia Semanal:</span> Cada lunes inicia una nueva competencia hasta el domingo</li>
             <li>• <span className="text-purple-600 font-bold">Mes:</span> Desde el día 1 del mes actual</li>
             <li>• <span className="text-blue-600 font-bold">Año:</span> Desde el 1 de enero</li>
             <li>• <span className="text-red-600 font-bold">Total:</span> Desde que te registraste</li>
@@ -31,10 +31,11 @@ export default function InfoTab() {
           <h3 className="font-bold text-red-800 text-sm sm:text-base mb-2">👑 Sistema de Reyes:</h3>
           <ul className="text-xs sm:text-sm text-red-700 space-y-1">
             <li>• Los <strong>REYES</strong> son los que <strong>MÁS</strong> tappers tienen</li>
-            <li>• 🗑️ Rey de la Semana = Peor de lunes a sábado (domingo NO cuenta)</li>
+            <li>• 🗑️ Rey de la Semana = Peor de la competencia semanal (lunes a sábado)</li>
             <li>• 👑🐷 Rey del Mes = Peor del mes actual (domingos NO cuentan)</li>
             <li>• 🏆💩 Rey del Año = Peor del año (domingos NO cuentan)</li>
             <li>• ¡Ser rey es ser una VERGÜENZA! 😈</li>
+            <li>• <strong>Cada lunes inicia una nueva competencia semanal</strong></li>
           </ul>
         </div>
 
