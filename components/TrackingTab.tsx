@@ -17,8 +17,21 @@ interface TrackingTabProps {
   onRefresh: () => void
 }
 
+interface AnimationState {
+  show: boolean
+  emoji: string
+  message: string
+  isPositive: boolean
+}
+
 export default function TrackingTab({ users, tapperLogs, session, onRefresh }: TrackingTabProps) {
   const supabase = useSupabaseClient()
+  const [animationState, setAnimationState] = useState<AnimationState>({
+    show: false,
+    emoji: '',
+    message: '',
+    isPositive: false
+  })
 
   // Get current week (Monday to Sunday) for the table using date-fns
   const getCurrentWeek = () => {
@@ -52,6 +65,94 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
   }
 
   const { days, todayString } = getCurrentWeek()
+
+  // Helper function to get user's total tapper count (excluding Sundays)
+  const getUserTapperCount = (userId: string): number => {
+    return tapperLogs.filter(log => {
+      const matchesUser = log.user_id === userId
+      const isTapper = log.is_tapper
+      
+      // Exclude Sundays from penalty calculations
+      const logDate = new Date(log.log_date + 'T00:00:00')
+      const isSundayDay = isSunday(logDate)
+      
+      return matchesUser && isTapper && !isSundayDay
+    }).length
+  }
+
+  // Helper function to get animation content based on shame level
+  const getAnimationContent = (userId: string, isTapper: boolean, isSundayDay: boolean): AnimationState => {
+    if (!isTapper) {
+      // Removing a tapper mark - positive message
+      return {
+        show: true,
+        emoji: '😇',
+        message: '¡Redimido!',
+        isPositive: true
+      }
+    }
+
+    if (isSundayDay) {
+      // Sunday tapper - free day
+      return {
+        show: true,
+        emoji: '🎉',
+        message: '¡Día libre!',
+        isPositive: true
+      }
+    }
+
+    // Adding a tapper mark - shame level based on total count
+    const tapperCount = getUserTapperCount(userId) + 1 // +1 because we're adding one
+    
+    if (tapperCount === 1) {
+      return {
+        show: true,
+        emoji: '😐',
+        message: '¡Primera caída!',
+        isPositive: false
+      }
+    } else if (tapperCount <= 2) {
+      return {
+        show: true,
+        emoji: '😅',
+        message: '¡Todavía hay esperanza!',
+        isPositive: false
+      }
+    } else if (tapperCount <= 5) {
+      return {
+        show: true,
+        emoji: '🤡',
+        message: '¡Sin autocontrol!',
+        isPositive: false
+      }
+    } else if (tapperCount <= 10) {
+      return {
+        show: true,
+        emoji: '🐷',
+        message: '¡Adicto total!',
+        isPositive: false
+      }
+    } else {
+      return {
+        show: true,
+        emoji: '🗑️',
+        message: '¡BASURA HUMANA!',
+        isPositive: false
+      }
+    }
+  }
+
+  // Function to trigger animation
+  const triggerAnimation = (userId: string, willBeTapper: boolean, isSundayDay: boolean) => {
+    const content = getAnimationContent(userId, willBeTapper, isSundayDay)
+    setAnimationState(content)
+    
+    // Hide animation after 2.5 seconds with fade out
+    setTimeout(() => {
+      setAnimationState(prev => ({ ...prev, show: false }))
+    }, 2500)
+  }
   
   const toggleTapper = async (userId: string, date: string) => {
     try {
@@ -59,6 +160,16 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
       const existingLog = tapperLogs.find(
         log => log.user_id === userId && log.log_date === date
       )
+
+      // Determine what the new state will be
+      const willBeTapper = existingLog ? !existingLog.is_tapper : true
+      
+      // Check if it's Sunday for animation purposes
+      const dateObj = new Date(date + 'T00:00:00')
+      const isSundayDay = isSunday(dateObj)
+      
+      // Trigger animation before database call
+      triggerAnimation(userId, willBeTapper, isSundayDay)
 
       if (existingLog) {
         // Update existing log
@@ -100,7 +211,92 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
   }
 
   return (
-    <div>
+    <div className="relative">
+      {/* Animation Popup */}
+      {animationState.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div 
+            className={`
+              transform transition-all duration-700 ease-out
+              ${animationState.show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}
+            `}
+            style={{
+              animation: animationState.show 
+                ? 'tapperPopup 2.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)' 
+                : 'none'
+            }}
+          >
+            <div className={`
+              rounded-2xl p-8 shadow-2xl backdrop-blur-md border-4 min-w-[280px]
+              ${animationState.isPositive 
+                ? 'bg-gradient-to-br from-green-50/95 to-green-100/95 border-green-400 text-green-800' 
+                : 'bg-gradient-to-br from-red-50/95 to-red-100/95 border-red-400 text-red-800'
+              }
+            `}>
+              <div className="text-center">
+                <div 
+                  className="text-9xl mb-4"
+                  style={{
+                    animation: 'emojiGrow 2.5s ease-out',
+                    filter: 'drop-shadow(0 0 20px rgba(0,0,0,0.3))'
+                  }}
+                >
+                  {animationState.emoji}
+                </div>
+                <div className="text-2xl font-bold mb-2">
+                  {animationState.message}
+                </div>
+                {!animationState.isPositive && (
+                  <div className="text-sm opacity-75 italic">
+                    ¡Qué vergüenza! 😈
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Inline Styles for Custom Animations */}
+      <style jsx>{`
+        @keyframes tapperPopup {
+          0% {
+            transform: scale(0) rotate(-180deg);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.1) rotate(-5deg);
+            opacity: 1;
+          }
+          80% {
+            transform: scale(0.95) rotate(2deg);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+
+        @keyframes emojiGrow {
+          0% {
+            transform: scale(0.5);
+            filter: blur(4px);
+          }
+          30% {
+            transform: scale(1.3);
+            filter: blur(0px);
+          }
+          60% {
+            transform: scale(0.9);
+          }
+          100% {
+            transform: scale(1);
+          }
+        }
+      `}</style>
+
+      {/* Main Content */}
       <h2 className="text-lg sm:text-xl font-bold text-center mb-4 text-gray-800">
         Seguimiento Semanal - Competencia Actual (Lunes a Domingo) v3.0 🗓️
       </h2>
