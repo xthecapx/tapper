@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSupabaseClient, Session } from '@supabase/auth-helpers-react'
 import { User, TapperLog } from './types'
+import StatusDropdown, { StatusType, getStatusFromBooleans, getBooleansFromStatus } from './StatusDropdown'
 import { 
   startOfWeek, 
   addDays, 
@@ -80,20 +81,85 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
     }).length
   }
 
-  // Helper function to get animation content based on shame level
-  const getAnimationContent = (userId: string, isTapper: boolean, isSundayDay: boolean): AnimationState => {
-    if (!isTapper) {
-      // Removing a tapper mark - positive message
-      return {
-        show: true,
-        emoji: '😇',
-        message: '¡Redimido!',
-        isPositive: true
+  // Helper function to get user's total slacker count (excluding Sundays)
+  const getUserSlackerCount = (userId: string): number => {
+    return tapperLogs.filter(log => {
+      const matchesUser = log.user_id === userId
+      const isSlacker = log.is_slacker === true // Direct slacker check!
+      
+      // Exclude Sundays from penalty calculations
+      const logDate = new Date(log.log_date + 'T00:00:00')
+      const isSundayDay = isSunday(logDate)
+      
+      return matchesUser && isSlacker && !isSundayDay
+    }).length
+  }
+
+  // Helper function to get consecutive slacker days
+  const getConsecutiveSlackerDays = (userId: string): number => {
+    const userLogs = tapperLogs
+      .filter(log => log.user_id === userId)
+      .sort((a, b) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime())
+    
+    let consecutive = 0
+    for (const log of userLogs) {
+      const logDate = new Date(log.log_date + 'T00:00:00')
+      const isSundayDay = isSunday(logDate)
+      
+      if (!isSundayDay && log.is_slacker === true) { // Direct slacker check!
+        consecutive++
+      } else {
+        break
       }
     }
+    return consecutive
+  }
 
+  // Helper function to get slacker animation content based on consecutive days
+  const getSlackerAnimationContent = (userId: string): AnimationState => {
+    const consecutiveDays = getConsecutiveSlackerDays(userId) + 1 // +1 because we're adding one
+    
+    if (consecutiveDays === 1) {
+      return {
+        show: true,
+        emoji: '🥱',
+        message: '¡Primera pereza!',
+        isPositive: false
+      }
+    } else if (consecutiveDays <= 3) {
+      return {
+        show: true,
+        emoji: '🥱',
+        message: '¡Demasiado flojo para moverte!',
+        isPositive: false
+      }
+    } else if (consecutiveDays <= 5) {
+      return {
+        show: true,
+        emoji: '🥱',
+        message: '¡Solo sabes bostezar!',
+        isPositive: false
+      }
+    } else if (consecutiveDays <= 10) {
+      return {
+        show: true,
+        emoji: '🥱',
+        message: '¡Perezoso profesional!',
+        isPositive: false
+      }
+    } else {
+      return {
+        show: true,
+        emoji: '🥱',
+        message: '¡ADICTO AL SOFÁ!',
+        isPositive: false
+      }
+    }
+  }
+
+  // Helper function to get animation content based on status change
+  const getStatusAnimationContent = (userId: string, newStatus: StatusType, isSundayDay: boolean): AnimationState => {
     if (isSundayDay) {
-      // Sunday tapper - free day
       return {
         show: true,
         emoji: '🎉',
@@ -102,50 +168,64 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
       }
     }
 
-    // Adding a tapper mark - shame level based on total count
-    const tapperCount = getUserTapperCount(userId) + 1 // +1 because we're adding one
-    
-    if (tapperCount === 1) {
-      return {
-        show: true,
-        emoji: '😐',
-        message: '¡Primera caída!',
-        isPositive: false
-      }
-    } else if (tapperCount <= 2) {
-      return {
-        show: true,
-        emoji: '😅',
-        message: '¡Todavía hay esperanza!',
-        isPositive: false
-      }
-    } else if (tapperCount <= 5) {
-      return {
-        show: true,
-        emoji: '🤡',
-        message: '¡Sin autocontrol!',
-        isPositive: false
-      }
-    } else if (tapperCount <= 10) {
-      return {
-        show: true,
-        emoji: '🐷',
-        message: '¡Adicto total!',
-        isPositive: false
-      }
-    } else {
-      return {
-        show: true,
-        emoji: '🗑️',
-        message: '¡BASURA HUMANA!',
-        isPositive: false
-      }
+    switch (newStatus) {
+      case 'clean':
+        return {
+          show: true,
+          emoji: '😇',
+          message: '¡Día perfecto!',
+          isPositive: true
+        }
+      
+      case 'tapper':
+        const tapperCount = getUserTapperCount(userId) + 1
+        if (tapperCount === 1) {
+          return {
+            show: true,
+            emoji: '😐',
+            message: '¡Al menos te moviste!',
+            isPositive: false
+          }
+        } else if (tapperCount <= 2) {
+          return {
+            show: true,
+            emoji: '💪',
+            message: '¡Compensado con ejercicio!',
+            isPositive: false
+          }
+        } else {
+          return {
+            show: true,
+            emoji: '⚖️',
+            message: '¡Algo es algo!',
+            isPositive: false
+          }
+        }
+      
+      case 'slacker':
+        return getSlackerAnimationContent(userId)
+      
+      case 'disaster':
+        return {
+          show: true,
+          emoji: '💩',
+          message: '¡DESASTRE TOTAL!',
+          isPositive: false
+        }
+      
+      default:
+        return {
+          show: true,
+          emoji: '❓',
+          message: '¿Qué pasó?',
+          isPositive: false
+        }
     }
   }
 
-  // Function to trigger animation
-  const triggerAnimation = (userId: string, willBeTapper: boolean, isSundayDay: boolean) => {
-    const content = getAnimationContent(userId, willBeTapper, isSundayDay)
+  // Function to trigger animation based on status
+  const triggerStatusAnimation = (userId: string, newStatus: StatusType, isSundayDay: boolean) => {
+    const content = getStatusAnimationContent(userId, newStatus, isSundayDay)
     setAnimationState(content)
     
     // Hide animation after 2.5 seconds with fade out
@@ -154,29 +234,30 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
     }, 2500)
   }
   
-  const toggleTapper = async (userId: string, date: string) => {
+  const updateUserStatus = async (userId: string, date: string, newStatus: StatusType) => {
     try {
       // Check if log exists for this user and date
       const existingLog = tapperLogs.find(
         log => log.user_id === userId && log.log_date === date
       )
 
-      // Determine what the new state will be
-      const willBeTapper = existingLog ? !existingLog.is_tapper : true
+      // Get boolean values from status
+      const { is_tapper, is_slacker } = getBooleansFromStatus(newStatus)
       
       // Check if it's Sunday for animation purposes
       const dateObj = new Date(date + 'T00:00:00')
       const isSundayDay = isSunday(dateObj)
       
       // Trigger animation before database call
-      triggerAnimation(userId, willBeTapper, isSundayDay)
+      triggerStatusAnimation(userId, newStatus, isSundayDay)
 
       if (existingLog) {
         // Update existing log
         const { error } = await supabase
           .from('tapper_logs')
           .update({ 
-            is_tapper: !existingLog.is_tapper,
+            is_tapper,
+            is_slacker,
             logged_by: session.user.id
           })
           .eq('id', existingLog.id)
@@ -189,7 +270,8 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
           .insert({
             user_id: userId,
             log_date: date,
-            is_tapper: true,
+            is_tapper,
+            is_slacker,
             logged_by: session.user.id
           })
         
@@ -199,15 +281,30 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
       // Refresh the data
       onRefresh()
     } catch (error) {
-      console.error('Error toggling tapper:', error)
+      console.error('Error updating status:', error)
     }
   }
 
-  const getTapperStatus = (userId: string, date: string): boolean => {
+  const getUserStatus = (userId: string, date: string): StatusType => {
     const log = tapperLogs.find(
       log => log.user_id === userId && log.log_date === date
     )
-    return log?.is_tapper || false
+    
+    if (!log) {
+      return 'clean' // default to clean if no log exists
+    }
+    
+    // Debug logging for rmmarkez199
+    if (log.user_id === 'rmmarkez199' || log.users?.email?.includes('rmmarkez199')) {
+      console.log(`DEBUG - rmmarkez199 ${date}:`, {
+        is_tapper: log.is_tapper,
+        is_slacker: log.is_slacker,
+        created_at: log.created_at,
+        updated_at: log.updated_at
+      })
+    }
+    
+    return getStatusFromBooleans(log.is_tapper, log.is_slacker, log.created_at)
   }
 
   return (
@@ -298,7 +395,7 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
 
       {/* Main Content */}
       <h2 className="text-lg sm:text-xl font-bold text-center mb-4 text-gray-800">
-        Seguimiento Semanal - Competencia Actual (Lunes a Domingo) v3.0 🗓️
+        Seguimiento Semanal - Tappers & Slackers (Lunes a Domingo) v4.0 🗓️🥱
       </h2>
       <div className="bg-gray-50 rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
@@ -366,42 +463,23 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
                     <div className="text-xs text-gray-500 hidden sm:block">{user.email}</div>
                   </td>
                   {days.map(date => {
-                    const isTapper = getTapperStatus(user.id, date)
+                    const currentStatus = getUserStatus(user.id, date)
                     const dateObj = new Date(date + 'T00:00:00') // Ensure local timezone
                     const isSundayDay = isSunday(dateObj)
                     const isToday = isTodayFns(dateObj)
                     
                     return (
-                      <td key={`${user.id}-${date}`} className={`px-1 sm:px-4 py-2 sm:py-4 text-center ${
+                      <td key={`${user.id}-${date}`} className={`px-1 sm:px-2 py-2 text-center ${
                         isToday ? 'bg-blue-50' : ''
                       }`}>
-                        <button
-                          onClick={() => toggleTapper(user.id, date)}
-                          className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 transition-all duration-200 text-xs sm:text-base ${
-                            isTapper
-                              ? isSundayDay 
-                                ? 'bg-orange-400 border-orange-400 text-white' // Sunday tapper (free day)
-                                : 'bg-red-500 border-red-500 text-white' // Regular tapper
-                              : 'bg-white border-gray-300 hover:border-gray-400'
-                          } ${isSundayDay ? 'ring-2 ring-green-300' : ''} ${
-                            isToday ? 'ring-2 ring-blue-400 shadow-lg' : ''
-                          }`}
-                          title={
-                            isSundayDay 
-                              ? isTapper 
-                                ? '🎉 Domingo libre - ¡No cuenta como penalización!' 
-                                : '🎉 Domingo libre - Día sin penalización'
-                              : isToday
-                                ? isTapper
-                                  ? '¡HOY - Día de tapper! ¡Qué vergüenza!'
-                                  : 'HOY - Día limpio'
-                                : isTapper 
-                                  ? '¡Día de tapper! ¡Qué vergüenza!' 
-                                  : 'Día limpio'
-                          }
-                        >
-                          {isTapper ? (isSundayDay ? '🎉' : '🍔') : '✅'}
-                        </button>
+                        <div className="w-full max-w-[80px] sm:max-w-[120px] mx-auto">
+                          <StatusDropdown
+                            currentStatus={currentStatus}
+                            onStatusChange={(newStatus) => updateUserStatus(user.id, date, newStatus)}
+                            isToday={isToday}
+                            isSunday={isSundayDay}
+                          />
+                        </div>
                       </td>
                     )
                   })}

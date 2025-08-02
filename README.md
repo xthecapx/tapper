@@ -56,6 +56,18 @@ Make sure email authentication is enabled in **Authentication > Settings**:
 
 ### 3. Database Setup
 
+#### Option 1: Using Supabase CLI (Recommended)
+
+To push migrations to production:
+
+```bash
+npx supabase db push
+```
+
+You'll need the database password from your [Supabase Database Settings](https://supabase.com/dashboard/project/iywpgsjildjlyfoogkku/settings/database).
+
+#### Option 2: Manual Migration
+
 Run the migration in your Supabase dashboard:
 - Go to **SQL Editor** in your Supabase dashboard
 - Copy and paste the contents of `supabase/migrations/20231201000000_tapper_tracking.sql`
