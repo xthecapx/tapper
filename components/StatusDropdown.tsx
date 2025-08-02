@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export type StatusType = 'clean' | 'tapper' | 'slacker' | 'disaster'
 
@@ -97,12 +97,30 @@ export default function StatusDropdown({
   disabled = false 
 }: StatusDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
   
   const currentOption = STATUS_OPTIONS.find(opt => opt.value === currentStatus) || STATUS_OPTIONS[2] // default to slacker
   
   const handleSelect = (status: StatusType) => {
     onStatusChange(status)
     setIsOpen(false)
+  }
+
+  // Handle native select change for mobile
+  const handleNativeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = event.target.value as StatusType
+    onStatusChange(newStatus)
   }
 
   // Special styling for Sunday and today
@@ -139,6 +157,56 @@ export default function StatusDropdown({
     `
   }
 
+  // Render native select for mobile devices
+  if (isMobile) {
+    return (
+      <div className="relative">
+        <select
+          value={currentStatus}
+          onChange={handleNativeChange}
+          disabled={disabled}
+          className={`
+            w-full text-xs font-medium rounded-md border-2 transition-all duration-200 
+            focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-[32px]
+            appearance-none bg-no-repeat bg-right-8 bg-center
+            ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+            ${isSunday ? 'ring-2 ring-green-300' : ''}
+            ${isToday ? 'ring-2 ring-blue-400 shadow-lg' : ''}
+            ${currentOption.bgColor} ${currentOption.textColor} border-transparent
+            px-2 py-1
+          `}
+          title={
+            isSunday 
+              ? `🎉 Domingo libre - ${currentOption.label}`
+              : isToday
+                ? `HOY - ${currentOption.label}`
+                : currentOption.label
+          }
+        >
+          {STATUS_OPTIONS.map((option) => (
+            <option 
+              key={option.value} 
+              value={option.value}
+              className="bg-white text-black"
+            >
+              {option.emoji} {option.shortLabel}
+            </option>
+          ))}
+        </select>
+        
+        {/* Custom dropdown arrow for mobile */}
+        {!disabled && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Render custom dropdown for desktop
   return (
     <div className="relative">
       <button
