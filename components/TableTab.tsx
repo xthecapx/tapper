@@ -34,15 +34,49 @@ export default function TableTab({ users, tapperLogs }: TableTabProps) {
     }).length
   }
 
-  // Clean days counting (new metric)
+  // Clean days counting (new metric) - Based on calendar days, not just logged days
   const getCleanCountForUser = (userId: string): number => {
-    return tapperLogs.filter(log => {
+    // Find the earliest record date dynamically
+    const earliestLog = tapperLogs.reduce((earliest, log) => {
+      const logDate = new Date(log.created_at)
+      const earliestDate = new Date(earliest)
+      return logDate < earliestDate ? log.created_at : earliest
+    }, tapperLogs[0]?.created_at || new Date().toISOString())
+    
+    const startDate = new Date(earliestLog.split('T')[0]) // Get just the date part
+    const today = new Date()
+    const totalDays = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    
+    // Count tapper days (bad eating days)
+    const tapperDays = tapperLogs.filter(log => {
       const matchesUser = log.user_id === userId
-      const isClean = !log.is_tapper && (log.is_slacker === false || log.is_slacker === null)
+      const isTapper = log.is_tapper
       
-      // Include all days (even Sundays count as good days)
-      return matchesUser && isClean
+      // Include all days (even Sundays count against health)
+      return matchesUser && isTapper
     }).length
+    
+    // Count slacker days (no exercise days) 
+    const slackerDays = tapperLogs.filter(log => {
+      const matchesUser = log.user_id === userId
+      const isSlacker = log.is_slacker === true // Only count explicit slacker days
+      
+      // Include all days (even Sundays count against health)
+      return matchesUser && isSlacker
+    }).length
+    
+    // Clean days = Total possible days - Tapper days - Slacker days + Overlap (disaster days counted twice)
+    const disasterDays = tapperLogs.filter(log => {
+      const matchesUser = log.user_id === userId
+      const isDisaster = log.is_tapper && log.is_slacker === true
+      return matchesUser && isDisaster
+    }).length
+    
+    // Calculate clean days: Total - Bad days + Overlap correction
+    const badDays = tapperDays + slackerDays - disasterDays // Remove double-counting
+    const cleanDays = Math.max(0, totalDays - badDays)
+    
+    return cleanDays
   }
 
   // Disaster days counting (both tapper and slacker)
