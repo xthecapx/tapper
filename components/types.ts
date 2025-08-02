@@ -9,6 +9,7 @@ export interface TapperLog {
   user_id: string
   log_date: string
   is_tapper: boolean
+  is_exercise: boolean
   logged_by: string
   users: User
 }
