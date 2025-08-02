@@ -11,6 +11,8 @@ export interface TapperLog {
   is_tapper: boolean
   is_slacker: boolean | null
   logged_by: string
+  created_at: string
+  updated_at: string
   users: User
 }
 

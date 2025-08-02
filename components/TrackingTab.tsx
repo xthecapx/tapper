@@ -294,15 +294,6 @@ export default function TrackingTab({ users, tapperLogs, session, onRefresh }: T
       return 'clean' // default to clean if no log exists
     }
     
-    // Debug logging for rmmarkez199
-    if (log.user_id === 'rmmarkez199' || log.users?.email?.includes('rmmarkez199')) {
-      console.log(`DEBUG - rmmarkez199 ${date}:`, {
-        is_tapper: log.is_tapper,
-        is_slacker: log.is_slacker,
-        created_at: log.created_at,
-        updated_at: log.updated_at
-      })
-    }
     
     return getStatusFromBooleans(log.is_tapper, log.is_slacker, log.created_at)
   }

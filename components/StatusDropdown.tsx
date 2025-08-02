@@ -55,32 +55,23 @@ const STATUS_OPTIONS: StatusOption[] = [
 ]
 
 export function getStatusFromBooleans(is_tapper: boolean, is_slacker: boolean | null | undefined, created_at?: string): StatusType {
-  // Debug logging
-  console.log('getStatusFromBooleans:', { is_tapper, is_slacker, type_of_slacker: typeof is_slacker, created_at })
-  
   // Handle NULL/undefined case (old records where slacker status wasn't tracked)
   if (is_slacker === null || is_slacker === undefined) {
-    console.log('→ NULL/undefined case, returning:', is_tapper ? 'tapper' : 'clean')
     return is_tapper ? 'tapper' : 'clean' // Treat old records as either tapper or clean (no slacker shame for old data)
   }
   
   // TEMPORARY FIX: Detect old records that were incorrectly migrated
   // Records created before Aug 1, 2025 should be treated as old tapper-only records
   if (created_at && new Date(created_at) < new Date('2025-08-01') && is_tapper && is_slacker) {
-    console.log('→ OLD RECORD FIX: Treating as tapper-only (ignoring is_slacker)')
     return 'tapper' // Ignore the is_slacker flag for old records
   }
   
   // Handle explicit slacker tracking - much cleaner logic!
-  let result: StatusType
-  if (!is_tapper && !is_slacker) result = 'clean'     // ✅ - No tapper, No slacker
-  else if (is_tapper && !is_slacker) result = 'tapper'     // 🍔 - Tapper but exercised
-  else if (!is_tapper && is_slacker) result = 'slacker'    // 🥱 - Clean eating but lazy
-  else if (is_tapper && is_slacker) result = 'disaster'    // 💩 - Both bad behaviors
-  else result = 'clean' // fallback
-  
-  console.log('→ Explicit tracking case, returning:', result)
-  return result
+  if (!is_tapper && !is_slacker) return 'clean'     // ✅ - No tapper, No slacker
+  if (is_tapper && !is_slacker) return 'tapper'     // 🍔 - Tapper but exercised
+  if (!is_tapper && is_slacker) return 'slacker'    // 🥱 - Clean eating but lazy
+  if (is_tapper && is_slacker) return 'disaster'    // 💩 - Both bad behaviors
+  return 'clean' // fallback
 }
 
 export function getBooleansFromStatus(status: StatusType): { is_tapper: boolean; is_slacker: boolean } {
